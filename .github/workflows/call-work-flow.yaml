@@ -12,4 +12,7 @@ jobs:
     uses: tex-corver/.github/.github/workflows/docker-build-push.yaml@master
     with:
       image_name: hello-world:v1
-    secrets: inherit
+    secrets:
+      DOCKER_USERNAME: admin
+      DOCKER_PASSWORD: "123456"
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
