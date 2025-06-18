@@ -108,7 +108,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
-    # needs: [build-image, deploy-on-dev, verify-deployment]
+    needs: [build-image, deploy-on-dev, verify-deployment]
     if: github.ref != 'refs/heads/master' && github.ref != 'refs/heads/main'
     steps:
       - name: Checkout code
