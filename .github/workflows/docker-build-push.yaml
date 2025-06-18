@@ -134,7 +134,5 @@ jobs:
             - ✅ Deployment verification completed
             
             Ready for production deployment!
-          branch: deploy/${{ github.ref_name }}-${{ github.run_number }}
           base: master
-          delete-branch: true
   
