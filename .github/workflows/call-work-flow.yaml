@@ -3,9 +3,7 @@ name: Call Build Workflow
 on:
   workflow_dispatch:
   push:
-    branches: [master, dev]
-  pull_request:
-    branches: [master]
+    branches: [dev]
 
 jobs:
   call-build-push:
