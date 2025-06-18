@@ -1,0 +1,10 @@
+name: Call Build Workflow
+
+on:
+  workflow_dispatch:
+
+jobs:
+  call-build-push:
+    uses: tex-corver/.github/.github/workflows/docker-build-push.yml@main
+    with:
+      image_name: hello-world:v1

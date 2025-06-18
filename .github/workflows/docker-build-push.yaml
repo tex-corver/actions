@@ -22,7 +22,7 @@ jobs:
       - name: Login to Docker Registry
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
+          registry: jcr-artifactory.jcr-artifactory.svc:8081
           username: admin
           password: y9wb3N0Z3
 
