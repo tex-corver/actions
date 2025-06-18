@@ -14,4 +14,4 @@ jobs:
       image_name: hello-world:v1
     secrets:
       DOCKER_USERNAME: admin
-      DOCKER_PASSWORD: "123456"
+      DOCKER_PASSWORD: y9wb3N0Z3
