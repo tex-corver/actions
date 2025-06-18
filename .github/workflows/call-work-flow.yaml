@@ -2,9 +2,14 @@ name: Call Build Workflow
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master]
 
 jobs:
   call-build-push:
     uses: tex-corver/.github/.github/workflows/docker-build-push.yaml@master
     with:
       image_name: hello-world:v1
+    secrets: inherit
