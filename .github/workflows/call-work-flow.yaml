@@ -11,7 +11,7 @@ jobs:
   call-build-push:
     uses: tex-corver/.github/.github/workflows/docker-build-push.yaml@master
     with:
-      image_name: hello-world:v1
+      image_name: hello-world
     secrets:
       DOCKER_USERNAME: admin
       DOCKER_PASSWORD: y9wb3N0Z3
