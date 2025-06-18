@@ -15,7 +15,7 @@ on:
 
 
 env:
-  REGISTRY: docker.io
+  REGISTRY: artifactory-jcr.artifactory-jcr.svc:8081
   IMAGE_NAME: ${{ inputs.image_name }}
 
 jobs:
@@ -32,7 +32,7 @@ jobs:
           echo "Tests completed successfully"
 
   build-image:
-    runs-on: ubuntu-latest
+    runs-on: arc-runner-set
     needs: run-test
     outputs:
       image-digest: ${{ steps.build.outputs.digest }}
@@ -73,6 +73,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          ssh: default=$HOME/.ssh/id_ed25519
 
   deploy-on-dev:
     runs-on: ubuntu-latest
