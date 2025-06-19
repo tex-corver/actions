@@ -113,13 +113,45 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN || github.token }}
       
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v5
+        uses: actions/github-script@v7
         with:
-          token: ${{ secrets.GITHUB_TOKEN || github.token }}
-          title: "Deploy ${{ env.IMAGE_NAME }} to production"
-          body: |
-            ## Deployment Summary
+          github-token: ${{ secrets.GITHUB_TOKEN || github.token }}
+          script: |
+            const { owner, repo } = context.repo;
+            const head = '${{ github.ref_name }}';
+            const base = 'master';
             
+            // Check if PR already exists
+            const existingPRs = await github.rest.pulls.list({
+              owner,
+              repo,
+              head: `${owner}:${head}`,
+              base,
+              state: 'open'
+            });
+            
+            if (existingPRs.data.length > 0) {
+              console.log(`Pull request already exists: ${existingPRs.data[0].html_url}`);
+              const existingPR = pulls.data[0];
+              // Create a comment on the existing PR
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: existingPR.number,
+                body: `This pull request has already been created for the latest changes. Please review the existing PR: ${existingPR.html_url}`
+              });
+              return;
+            }
+            
+            // Create the pull request
+            const pr = await github.rest.pulls.create({
+              owner,
+              repo,
+              title: 'Deploy ${{ env.IMAGE_NAME }} to production',
+              head,
+              base,
+              body: `## Deployment Summary
+
             - **Image**: ${{ needs.build-image.outputs.image-tag }}
             - **Digest**: ${{ needs.build-image.outputs.image-digest }}
             - **Branch**: ${{ github.ref_name }}
@@ -131,7 +163,18 @@ jobs:
             - ✅ Deployed to development environment
             - ✅ Deployment verification completed
             
-            Ready for production deployment!
-          base: master
-          branch: dev
+            Ready for production deployment!`
+            });
+            
+            console.log(`Pull request created: ${pr.data.html_url}`);
+            
+            // Assign reviewer
+            await github.rest.pulls.requestReviewers({
+              owner,
+              repo,
+              pull_number: pr.data.number,
+              reviewers: ['duchuyvp', 'texcorver']
+            });
+            
+            console.log('Reviewer assigned successfully');
   
