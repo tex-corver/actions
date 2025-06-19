@@ -100,7 +100,6 @@ jobs:
         run: |
           echo "Verifying deployment..."
           # Add health checks, smoke tests, etc.
-          sleep 30
           echo "Deployment verification completed successfully"
 
   create-pr-to-master:
