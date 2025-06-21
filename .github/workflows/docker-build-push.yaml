@@ -183,7 +183,7 @@ jobs:
           echo "Deployment to development completed"
 
   verify-deployment:
-    runs-on: ubuntu-latest
+    runs-on: arc-runner-set
     needs: deploy-on-dev
     steps:
       - name: Set up kubectl
