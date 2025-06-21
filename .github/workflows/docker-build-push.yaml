@@ -194,7 +194,7 @@ jobs:
         timeout-minutes: 5
         run: |
           kubectl wait --for=condition=available deployment/${{ env.IMAGE_NAME }} -n ${{ inputs.org-name }}
-          kubectl rollout status deployment/${{ inputs.project-name }} -n ${{ inputs.org-name }}
+          kubectl rollout status deployment/${{ env.IMAGE_NAME }} -n ${{ inputs.org-name }}
           echo "Deployment verification completed successfully"
       - name: Verify deployment
         run: |
