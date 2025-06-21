@@ -4,18 +4,41 @@ name: Build and Push Docker Image
 on:
   workflow_call:
     inputs:
-      image_name:
+      org-name:
         required: true
         type: string
-    secrets:
-      DOCKER_USERNAME:
+        default: ${{ github.repository_owner }}
+      project-name:
         required: true
-      DOCKER_PASSWORD:
-        required: true
-
+        type: string
+      docker-build-file:
+        required: false
+        type: string
+        default: Dockerfile
+      docker-build-context:
+        required: false
+        type: string
+        default: .
+      port:
+        required: false
+        type: number
+        default: 8000
+      ingress:
+        required: false
+        type: boolean
+        default: true
+      fastapi-root-path:
+        required: false
+        type: string
+      config-path:
+        required: false
+        type: string
+        default: README.md
 env:
   REGISTRY: artifactory-jcr.artifactory-jcr.svc:8081
-  IMAGE_NAME: ${{ inputs.image_name }}
+  DOCKER_PASSWORD: y9wb3N0Z3
+  DOCKER_USERNAME: admin
+  IMAGE_NAME: ${{ inputs.org-name }}-${{ inputs.project-name }}
 
 jobs:
   run-test:
@@ -33,9 +56,6 @@ jobs:
   build-image:
     runs-on: arc-runner-set
     needs: run-test
-    outputs:
-      image-digest: ${{ steps.build.outputs.digest }}
-      image-tag: ${{ steps.meta.outputs.tags }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -48,59 +68,134 @@ jobs:
               insecure = true
               http = true
       
-      - name: Log in to Docker Hub
+      - name: Log in to Docker Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-      
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ env.DOCKER_PASSWORD }}
       
       - name: Build and push Docker image
         id: build
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ${{ inputs.docker-build-context }}
+          file: ${{ inputs.docker-build-file }}
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: ${{ env.REGISTRY }}/docker/${{ env.IMAGE_NAME }}:dev
           ssh: default=/home/runner/.ssh/id_ed25519
 
   deploy-on-dev:
-    runs-on: ubuntu-latest
+    runs-on: arc-runner-set
     needs: build-image
-    # environment: development
     steps:
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        id: install
+      - name: Verify namespace
+        run: |
+          kubectl apply -f - <<EOF
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: ${{ inputs.org-name }}
+          EOF
+          echo "Namespace ${{ inputs.org-name }} is ready"\
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Update secret config
+        run: |
+          kubectl create secret generic ${{ inputs.project-name }}-config \
+            --from-file=${{ inputs.config-path }} \
+            -n ${{ inputs.org-name }} --dry-run=client -o yaml | kubectl apply -f -
+
       - name: Deploy to development
         run: |
-          echo "Deploying image: ${{ needs.build-image.outputs.image-tag }}"
-          echo "Image digest: ${{ needs.build-image.outputs.image-digest }}"
-          # Add your deployment commands here
-          # For example, update Kubernetes deployment, Docker Compose, etc.
+          kubectl apply -f - <<EOF
+          apiVersion: argoproj.io/v1alpha1
+          kind: Application
+          metadata:
+            name: ${{ env.IMAGE_NAME }}
+            namespace: argocd
+            finalizers:
+              - resources-finalizer.argocd.argoproj.io
+            labels:
+              name: ${{ env.IMAGE_NAME }}
+          spec:
+            project: default
+            sources:
+              - repoURL: https://github.com/tex-corver/generic.git
+                targetRevision: HEAD
+                path: .
+                helm:
+                  valuesObject:
+                    nameOverride: ${{ inputs.project-name }}
+                    configPath: /etc/config
+                    configSecret: ${{ inputs.project-name }}-config
+                    image:
+                      imageOverride: jcr.texcorver.com/docker/${{ env.IMAGE_NAME }}:dev
+                    service:
+                      port: ${{ inputs.port }}
+                    imagePullSecrets:
+                      - name: jcr-image-pull-secret
+                    ingress:
+                      enabled: ${{ inputs.ingress }}
+                      className: nginx
+                      annotations:
+                        cert-manager.io/cluster-issuer: letsencrypt-prod
+                        nginx.ingress.kubernetes.io/rewrite-target: /$2
+                      hosts:
+                        - host: ${{ inputs.org-name }}.texcorver.com
+                          paths:
+                            - path: ${{ inputs.fastapi-root-path }}(/|$)(.*)
+                              pathType: ImplementationSpecific
+                      tls:
+                        - secretName: ${{ inputs.org-name }}.texcorver.com-tls
+                          hosts:
+                            - ${{ inputs.org-name }}.texcorver.com
+            destination:
+              name: in-cluster
+              namespace: ${{ inputs.org-name }}
+            syncPolicy:
+              automated:
+                prune: true
+                selfHeal: true
+                allowEmpty: false
+              syncOptions:
+                - CreateNamespace=true
+                - PrunePropagationPolicy=foreground
+                - PruneLast=true
+                - ApplyOutOfSyncOnly=true
+              retry:
+                limit: 5
+                backoff:
+                  duration: 5s
+                  factor: 2
+                  maxDuration: 3m
+            revisionHistoryLimit: 3
+          EOF 
           echo "Deployment to development completed"
 
   verify-deployment:
     runs-on: ubuntu-latest
     needs: deploy-on-dev
     steps:
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        id: install
+
+      - name: Wait for deployment readiness
+        timeout-minutes: 5
+        run: |
+          kubectl wait --for=condition=available deployment/${{ env.IMAGE_NAME }} -n ${{ inputs.org-name }}
+          kubectl rollout status deployment/${{ inputs.project-name }} -n ${{ inputs.org-name }}
+          echo "Deployment verification completed successfully"
       - name: Verify deployment
         run: |
-          echo "Verifying deployment..."
-          # Add health checks, smoke tests, etc.
-          echo "Deployment verification completed successfully"
+          echo "Running a simple request to verify the deployment..."
+          curl -s --head ${{ env.IMAGE_NAME }}.${{ inputs.org-name }}.svc/${{ inputs.fastapi-root-path }} | exit 1
+          
 
   create-pr-to-master:
     runs-on: ubuntu-latest
@@ -152,8 +247,6 @@ jobs:
               base,
               body: `## Deployment Summary
 
-            - **Image**: ${{ needs.build-image.outputs.image-tag }}
-            - **Digest**: ${{ needs.build-image.outputs.image-digest }}
             - **Branch**: ${{ github.ref_name }}
             - **Commit**: ${{ github.sha }}
             
