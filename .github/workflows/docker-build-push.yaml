@@ -27,9 +27,14 @@ on:
         required: false
         type: boolean
         default: true
+      ingress-subdomain:
+        required: false
+        type: string
+        default: ${{ github.repository_owner }}
       fastapi-root-path:
         required: false
         type: string
+        default: /
       config-path:
         required: false
         type: string
@@ -146,14 +151,14 @@ jobs:
                         cert-manager.io/cluster-issuer: letsencrypt-prod
                         nginx.ingress.kubernetes.io/rewrite-target: /$2
                       hosts:
-                        - host: ${{ inputs.org-name }}.texcorver.com
+                        - host: ${{ inputs.ingress-subdomain }}.texcorver.com
                           paths:
                             - path: ${{ inputs.fastapi-root-path }}(/|$)(.*)
                               pathType: ImplementationSpecific
                       tls:
-                        - secretName: ${{ inputs.org-name }}.texcorver.com-tls
+                        - secretName: ${{ inputs.ingress-subdomain }}.texcorver.com-tls
                           hosts:
-                            - ${{ inputs.org-name }}.texcorver.com
+                            - ${{ inputs.ingress-subdomain }}.texcorver.com
             destination:
               name: in-cluster
               namespace: ${{ inputs.org-name }}
@@ -194,7 +199,7 @@ jobs:
       - name: Verify deployment
         run: |
           echo "Running a simple request to verify the deployment..."
-          curl -s --head ${{ env.IMAGE_NAME }}.${{ inputs.org-name }}.svc/${{ inputs.fastapi-root-path }} | exit 1
+          curl -s --head ${{ env.IMAGE_NAME }}.${{ inputs.org-name }}.svc:${{ inputs.port }} | exit 1
           
 
   create-pr-to-master:
