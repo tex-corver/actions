@@ -106,7 +106,7 @@ jobs:
           metadata:
             name: ${{ inputs.org-name }}
           EOF
-          echo "Namespace ${{ inputs.org-name }} is ready"\
+          echo "Namespace ${{ inputs.org-name }} is ready"
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Update secret config
@@ -232,7 +232,7 @@ jobs:
             
             if (existingPRs.data.length > 0) {
               console.log(`Pull request already exists: ${existingPRs.data[0].html_url}`);
-              const existingPR = pulls.data[0];
+              const existingPR = existingPRs.data[0];
               // Create a comment on the existing PR
               await github.rest.issues.createComment({
                 owner,
