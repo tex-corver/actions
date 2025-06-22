@@ -11,7 +11,7 @@ jobs:
       org-name: tex-corver
       project-name: httpbin
       docker-build-file: src/apps/httpbin/Dockerfile
-      docker-build-context: src/apps/httpbin
+      docker-build-context: .
       port: 80
       ingress: true
       ingress-subdomain: httpbin
