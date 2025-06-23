@@ -14,3 +14,4 @@ jobs:
       docker-build-context: .
       port: 80
       ingress: true
+      ingress-subdomain: httpbin
