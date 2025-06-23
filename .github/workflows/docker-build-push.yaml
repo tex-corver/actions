@@ -5,7 +5,7 @@ on:
   workflow_call:
     inputs:
       org-name:
-        required: true
+        required: false
         type: string
         default: ${{ github.repository_owner }}
       project-name:
