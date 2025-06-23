@@ -1,4 +1,4 @@
-name: Call Build Workflow
+name: Example Usage of Docker Build and Push Workflow
 
 on:
   workflow_dispatch:
