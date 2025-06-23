@@ -11,6 +11,10 @@ on:
       project-name:
         required: true
         type: string
+      tag:
+        required: false
+        type: string
+        default: dev
       docker-build-file:
         required: false
         type: string
@@ -88,7 +92,7 @@ jobs:
           file: ${{ inputs.docker-build-file }}
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ env.REGISTRY }}/docker/${{ env.IMAGE_NAME }}:dev
+          tags: ${{ env.REGISTRY }}/docker/${{ env.IMAGE_NAME }}:${{ inputs.tag }}
           ssh: default=/home/runner/.ssh/id_ed25519
 
   deploy-on-dev:
