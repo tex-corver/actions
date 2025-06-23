@@ -140,12 +140,14 @@ jobs:
                 targetRevision: HEAD
                 path: .
                 helm:
+                  releaseName: ${{ env.IMAGE_NAME }}
                   valuesObject:
                     nameOverride: ${{ inputs.project-name }}
                     configPath: /etc/config
                     configSecret: ${{ inputs.project-name }}-config
                     image:
                       imageOverride: jcr.texcorver.com/docker/${{ env.IMAGE_NAME }}:${{ inputs.tag }}
+                      pullPolicy: Always
                     service:
                       port: ${{ inputs.port }}
                     imagePullSecrets:
@@ -155,12 +157,12 @@ jobs:
                       className: nginx
                       annotations:
                         cert-manager.io/cluster-issuer: letsencrypt-prod
-                        ${{ inputs.fastapi-root-path != '' && 'nginx.ingress.kubernetes.io/rewrite-target: /$2' || null }}
+                        ${{ inputs.root-path != '' && 'nginx.ingress.kubernetes.io/rewrite-target: /$2' || null }}
                       hosts:
                         - host: ${{ env.INGRESS_HOST }}
                           paths:
-                            - path: ${{ inputs.fastapi-root-path != '' && format('{0}(/|$)(.*)', inputs.fastapi-root-path) || '/' }}
-                              pathType: ${{ inputs.fastapi-root-path != '' && 'ImplementationSpecific' || 'Prefix' }}
+                            - path: ${{ inputs.root-path != '' && format('{0}(/|$)(.*)', inputs.root-path) || '/' }}
+                              pathType: ${{ inputs.root-path != '' && 'ImplementationSpecific' || 'Prefix' }}
                       tls:
                         - secretName: ${{ env.INGRESS_HOST }}-tls
                           hosts:
@@ -196,6 +198,11 @@ jobs:
         uses: azure/setup-kubectl@v4
         id: install
 
+      - name: Restart deployment
+        run: |
+          kubectl rollout restart deployment/${{ env.IMAGE_NAME }} -n ${{ inputs.org-name }}
+          echo "Deployment restarted successfully"
+
       - name: Wait for deployment readiness
         timeout-minutes: 5
         run: |
@@ -205,7 +212,8 @@ jobs:
       - name: Verify deployment
         run: |
           echo "Running a simple request to verify the deployment..."
-          curl -s --head ${{ env.IMAGE_NAME }}.${{ inputs.org-name }}.svc:${{ inputs.port }} || echo "Service check completed"
+          curl -s --head ${{ env.IMAGE_NAME }}.${{ inputs.org-name }}.svc:${{ inputs.port }} || exit 1
+          echo "Deployment is verified successfully"
           
 
   create-pr-to-master:
