@@ -155,7 +155,7 @@ jobs:
                       className: nginx
                       annotations:
                         cert-manager.io/cluster-issuer: letsencrypt-prod
-                        ${{ inputs.fastapi-root-path != '' && 'nginx.ingress.kubernetes.io/rewrite-target' || null }}: ${{ inputs.fastapi-root-path != '' && null || '/$2' }}
+                        ${{ inputs.fastapi-root-path != '' && 'nginx.ingress.kubernetes.io/rewrite-target: /$2' || null }}
                       hosts:
                         - host: ${{ env.INGRESS_HOST }}
                           paths:
