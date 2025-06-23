@@ -34,11 +34,11 @@ on:
       ingress-subdomain:
         required: false
         type: string
-        default: ${{ github.repository_owner }}
-      fastapi-root-path:
+        default: ''
+      root-path:
         required: false
         type: string
-        default: /
+        default: ''
       config-path:
         required: false
         type: string
@@ -98,6 +98,8 @@ jobs:
   deploy-on-dev:
     runs-on: arc-runner-set
     needs: build-image
+    env:
+      INGRESS_HOST: ${{ inputs.ingress-subdomain != '' && format('{0}.texcorver.com', inputs.ingress-subdomain) || 'texcorver.com' }}
     steps:
       - name: Set up kubectl
         uses: azure/setup-kubectl@v4
@@ -143,7 +145,7 @@ jobs:
                     configPath: /etc/config
                     configSecret: ${{ inputs.project-name }}-config
                     image:
-                      imageOverride: jcr.texcorver.com/docker/${{ env.IMAGE_NAME }}:dev
+                      imageOverride: jcr.texcorver.com/docker/${{ env.IMAGE_NAME }}:${{ inputs.tag }}
                     service:
                       port: ${{ inputs.port }}
                     imagePullSecrets:
@@ -153,16 +155,16 @@ jobs:
                       className: nginx
                       annotations:
                         cert-manager.io/cluster-issuer: letsencrypt-prod
-                        nginx.ingress.kubernetes.io/rewrite-target: /$2
+                        ${{ inputs.fastapi-root-path == '' && 'nginx.ingress.kubernetes.io/rewrite-target' || null }}: ${{ inputs.fastapi-root-path == '' && null || '/$2' }}
                       hosts:
-                        - host: ${{ inputs.ingress-subdomain }}.texcorver.com
+                        - host: ${{ env.INGRESS_HOST }}
                           paths:
-                            - path: ${{ inputs.fastapi-root-path }}(/|$)(.*)
-                              pathType: ImplementationSpecific
+                            - path: ${{ inputs.fastapi-root-path != '' && format('{0}(/|$)(.*)', inputs.fastapi-root-path) || '/' }}
+                              pathType: ${{ inputs.fastapi-root-path != '' && 'ImplementationSpecific' || 'Prefix' }}
                       tls:
-                        - secretName: ${{ inputs.ingress-subdomain }}.texcorver.com-tls
+                        - secretName: ${{ env.INGRESS_HOST }}-tls
                           hosts:
-                            - ${{ inputs.ingress-subdomain }}.texcorver.com
+                            - ${{ env.INGRESS_HOST }}
             destination:
               name: in-cluster
               namespace: ${{ inputs.org-name }}
