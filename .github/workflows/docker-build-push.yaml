@@ -210,10 +210,14 @@ jobs:
           kubectl rollout status deployment/${{ env.IMAGE_NAME }} -n ${{ inputs.org-name }}
           echo "Deployment verification completed successfully"
       - name: Verify deployment
+        timeout-minutes: 5
         run: |
           echo "Running a simple request to verify the deployment..."
-          curl -s --head ${{ env.IMAGE_NAME }}.${{ inputs.org-name }}.svc:${{ inputs.port }} || exit 1
-          echo "Deployment is verified successfully"
+          while ! curl -s --head ${{ env.IMAGE_NAME }}.${{ inputs.org-name }}.svc:${{ inputs.port }}; do
+            echo "Waiting for deployment to be ready..."
+            sleep 5
+          done
+          echo "Deployment is ready, verifying..."
           
 
   create-pr-to-master:
