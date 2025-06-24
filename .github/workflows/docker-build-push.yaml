@@ -118,7 +118,7 @@ jobs:
       - name: Update secret config
         run: |
           kubectl create secret generic ${{ inputs.project-name }}-config \
-            --from-file=${{ inputs.config-path }} \
+            --from-file '${{ inputs.config-path }}' \
             -n ${{ inputs.org-name }} --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Deploy to development
