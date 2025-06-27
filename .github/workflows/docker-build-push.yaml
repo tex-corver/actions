@@ -3,6 +3,13 @@ name: Build and Push Docker Image
 
 on:
   workflow_call:
+    outputs:
+      link:
+        description: |
+          URL to the deployed application in the development environment.
+          This link is generated after the deployment is verified and can be used to access the application.
+          Example: https://pay4me-api.texcorver.com
+        value: ${{ jobs.verify-deployment.outputs.link }}
     inputs:
       org-name:
         required: false
@@ -107,6 +114,7 @@ env:
   DOCKER_PASSWORD: y9wb3N0Z3
   DOCKER_USERNAME: admin
   IMAGE_NAME: ${{ inputs.org-name }}-${{ inputs.project-name }}
+  INGRESS_HOST: ${{ inputs.ingress-subdomain != '' && format('{0}.texcorver.com', inputs.ingress-subdomain) || 'texcorver.com' }}
 
 jobs:
   run-test:
@@ -157,8 +165,8 @@ jobs:
   deploy-on-dev:
     runs-on: arc-runner-set
     needs: build-image
-    env:
-      INGRESS_HOST: ${{ inputs.ingress-subdomain != '' && format('{0}.texcorver.com', inputs.ingress-subdomain) || 'texcorver.com' }}
+    # env:
+    #   INGRESS_HOST: ${{ inputs.ingress-subdomain != '' && format('{0}.texcorver.com', inputs.ingress-subdomain) || 'texcorver.com' }}
     steps:
       - name: Set up kubectl
         uses: azure/setup-kubectl@v4
@@ -252,6 +260,8 @@ jobs:
   verify-deployment:
     runs-on: arc-runner-set
     needs: deploy-on-dev
+    outputs:
+      link: ${{ steps.get-output.outputs.link }}
     steps:
       - name: Set up kubectl
         uses: azure/setup-kubectl@v4
@@ -277,6 +287,9 @@ jobs:
             sleep 5
           done
           echo "Deployment is ready, verifying..."
+      - id: get-output
+        run: |
+          echo "link=https://${{ env.INGRESS_HOST }}${{ inputs.root-path }}" >> "$GITHUB_OUTPUT"
           
 
   create-pr-to-master:
