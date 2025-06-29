@@ -16,3 +16,5 @@ jobs:
       ingress: true
       ingress-subdomain: example-app
       config-path: README.md
+      create-pr: true
+      test-command: echo "0"
