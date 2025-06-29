@@ -1,368 +1,368 @@
-# .github/workflows/docker-build-push.yml
-name: Build and Push Docker Image
+# # .github/workflows/docker-build-push.yml
+# name: Build and Push Docker Image
 
-on:
-  workflow_call:
-    outputs:
-      link:
-        description: |
-          URL to the deployed application in the development environment.
-          This link is generated after the deployment is verified and can be used to access the application.
-          Example: https://pay4me-api.texcorver.com
-        value: ${{ jobs.verify-deployment.outputs.link }}
-    inputs:
-      org-name:
-        required: false
-        type: string
-        default: ${{ github.repository_owner }}
-        description: |
-          Organization or team name that groups related applications together.
-          This creates logical separation between different teams/projects in the deployment environment.
-          Used as part of your application's domain name and Docker image name.
-          Examples: 'tex-corver', 'jannic-ai', ...
-          Default: Repository owner name
-      project-name:
-        required: true
-        type: string
-        description: |
-          Unique identifier for your specific application or service within the organization.
-          Used for Docker image naming, deployment identification, and application configuration.
-          Should be descriptive and follow naming conventions (lowercase, hyphens allowed).
-          Examples: 'user-service', 'pay4me', 'landing-page', ...
-      tag:
-        required: false
-        type: string
-        default: dev
-        description: |
-          Version tag that will be applied to your Docker image. Typically represents the environment or version.
-          The image will be tagged as: {registry}/{org-name}-{project-name}:{tag}
-          Common values: 'dev', 'v1', 'prod', 'v1.0.0', or git commit SHA
-          Default: 'dev'
-      docker-build-file:
-        required: false
-        type: string
-        default: Dockerfile
-        description: |
-          Relative path from root of repository to the Dockerfile used for building your application image.
-          Useful when you have multiple Dockerfiles or when the Dockerfile is in a subdirectory.
-          Examples: 'Dockerfile', 'docker/Dockerfile', 'src/apps/api/Dockerfile'
-          Default: 'Dockerfile' (in repository root)
-      docker-build-context:
-        required: false
-        type: string
-        default: .
-        description: |
-          Directory path that contains all the files needed to build your Docker image.
-          This determines which files are available during the build process (COPY, ADD commands).
-          Should contain all necessary source code, dependencies, and configuration files.
-          Examples: '.', 'src/apps/schedule-manager', ...
-          Default: '.' (repository root)
-      port:
-        required: false
-        type: number
-        default: 8000
-        description: |
-          TCP port number that your application listens on inside the container.
-          This must exactly match the port your application binds to (e.g., app.run(port=8080)).
-          Used for routing traffic to your application and health checks.
-          Common ports: 3000 (Node.js), 8000 (Python/Django), 8080 (Spring Boot), 80 (Nginx)
-          Default: 8000
-      ingress:
-        required: false
-        type: boolean
-        default: true
-        description: |
-          Controls whether your application will be accessible from the internet via HTTPS.
-          When enabled, your application gets a public URL with automatic SSL/TLS certificates.
-          Set to false for internal services that don't need external access (e.g., databases, internal APIs).
-          When true, creates a secure HTTPS endpoint for your application.
-          Default: true
-      ingress-subdomain:
-        required: false
-        type: string
-        default: ''
-        description: |
-          Subdomain prefix for your application's public URL. Determines how users will access your app.
-          Empty string means the app is accessible at the `texcorver.com`.
-          Subsubdomains are also allowed, e.g., 'app1.jannic-ai' → 'https://app1.jannic-ai.texcorver.com'.
-          Final URL format: https://{subdomain}?.texcorver.com{root-path}
-          Examples: 'pay4me-api' → https://pay4me-api.texcorver.com, '' → https://texcorver.com
-          Only applies when ingress=true. Default: '' 
-      root-path:
-        required: false
-        type: string
-        default: ''
-        description: |
-          URL path prefix where your application will be accessible. Must match your application's routing configuration.
-          For other frameworks, I don't know, but for FastAPI apps, this must match the 'root_path' parameter in your FastAPI() constructor.
-          Examples: '/api/v1', '/payments', '/auth', '' (for root path)
-          Final URL: https://{domain}{root-path}/your-endpoints
-          Default: '' 
-      config-path:
-        required: false
-        type: string
-        default: README.md
-        description: |
-          Path to a configuration file that will be made available to your running application.
-          The file will be mount to `CONFIG_PATH` inside your container.
-          Useful for application settings, environment-specific configurations, or documentation.
-          Read more at `utils.get_config`.
-          Examples: '.configs', 'src/apps/worker/.configs.sample', ...
-          Default: 'README.md'
-env:
-  REGISTRY: artifactory-jcr.artifactory-jcr.svc:8081
-  DOCKER_PASSWORD: y9wb3N0Z3
-  DOCKER_USERNAME: admin
-  IMAGE_NAME: ${{ inputs.org-name }}-${{ inputs.project-name }}
-  INGRESS_HOST: ${{ inputs.ingress-subdomain != '' && format('{0}.texcorver.com', inputs.ingress-subdomain) || 'texcorver.com' }}
+# on:
+#   workflow_call:
+#     outputs:
+#       link:
+#         description: |
+#           URL to the deployed application in the development environment.
+#           This link is generated after the deployment is verified and can be used to access the application.
+#           Example: https://pay4me-api.texcorver.com
+#         value: ${{ jobs.verify-deployment.outputs.link }}
+#     inputs:
+#       org-name:
+#         required: false
+#         type: string
+#         default: ${{ github.repository_owner }}
+#         description: |
+#           Organization or team name that groups related applications together.
+#           This creates logical separation between different teams/projects in the deployment environment.
+#           Used as part of your application's domain name and Docker image name.
+#           Examples: 'tex-corver', 'jannic-ai', ...
+#           Default: Repository owner name
+#       project-name:
+#         required: true
+#         type: string
+#         description: |
+#           Unique identifier for your specific application or service within the organization.
+#           Used for Docker image naming, deployment identification, and application configuration.
+#           Should be descriptive and follow naming conventions (lowercase, hyphens allowed).
+#           Examples: 'user-service', 'pay4me', 'landing-page', ...
+#       tag:
+#         required: false
+#         type: string
+#         default: dev
+#         description: |
+#           Version tag that will be applied to your Docker image. Typically represents the environment or version.
+#           The image will be tagged as: {registry}/{org-name}-{project-name}:{tag}
+#           Common values: 'dev', 'v1', 'prod', 'v1.0.0', or git commit SHA
+#           Default: 'dev'
+#       docker-build-file:
+#         required: false
+#         type: string
+#         default: Dockerfile
+#         description: |
+#           Relative path from root of repository to the Dockerfile used for building your application image.
+#           Useful when you have multiple Dockerfiles or when the Dockerfile is in a subdirectory.
+#           Examples: 'Dockerfile', 'docker/Dockerfile', 'src/apps/api/Dockerfile'
+#           Default: 'Dockerfile' (in repository root)
+#       docker-build-context:
+#         required: false
+#         type: string
+#         default: .
+#         description: |
+#           Directory path that contains all the files needed to build your Docker image.
+#           This determines which files are available during the build process (COPY, ADD commands).
+#           Should contain all necessary source code, dependencies, and configuration files.
+#           Examples: '.', 'src/apps/schedule-manager', ...
+#           Default: '.' (repository root)
+#       port:
+#         required: false
+#         type: number
+#         default: 8000
+#         description: |
+#           TCP port number that your application listens on inside the container.
+#           This must exactly match the port your application binds to (e.g., app.run(port=8080)).
+#           Used for routing traffic to your application and health checks.
+#           Common ports: 3000 (Node.js), 8000 (Python/Django), 8080 (Spring Boot), 80 (Nginx)
+#           Default: 8000
+#       ingress:
+#         required: false
+#         type: boolean
+#         default: true
+#         description: |
+#           Controls whether your application will be accessible from the internet via HTTPS.
+#           When enabled, your application gets a public URL with automatic SSL/TLS certificates.
+#           Set to false for internal services that don't need external access (e.g., databases, internal APIs).
+#           When true, creates a secure HTTPS endpoint for your application.
+#           Default: true
+#       ingress-subdomain:
+#         required: false
+#         type: string
+#         default: ''
+#         description: |
+#           Subdomain prefix for your application's public URL. Determines how users will access your app.
+#           Empty string means the app is accessible at the `texcorver.com`.
+#           Subsubdomains are also allowed, e.g., 'app1.jannic-ai' → 'https://app1.jannic-ai.texcorver.com'.
+#           Final URL format: https://{subdomain}?.texcorver.com{root-path}
+#           Examples: 'pay4me-api' → https://pay4me-api.texcorver.com, '' → https://texcorver.com
+#           Only applies when ingress=true. Default: '' 
+#       root-path:
+#         required: false
+#         type: string
+#         default: ''
+#         description: |
+#           URL path prefix where your application will be accessible. Must match your application's routing configuration.
+#           For other frameworks, I don't know, but for FastAPI apps, this must match the 'root_path' parameter in your FastAPI() constructor.
+#           Examples: '/api/v1', '/payments', '/auth', '' (for root path)
+#           Final URL: https://{domain}{root-path}/your-endpoints
+#           Default: '' 
+#       config-path:
+#         required: false
+#         type: string
+#         default: README.md
+#         description: |
+#           Path to a configuration file that will be made available to your running application.
+#           The file will be mount to `CONFIG_PATH` inside your container.
+#           Useful for application settings, environment-specific configurations, or documentation.
+#           Read more at `utils.get_config`.
+#           Examples: '.configs', 'src/apps/worker/.configs.sample', ...
+#           Default: 'README.md'
+# env:
+#   REGISTRY: artifactory-jcr.artifactory-jcr.svc:8081
+#   DOCKER_PASSWORD: y9wb3N0Z3
+#   DOCKER_USERNAME: admin
+#   IMAGE_NAME: ${{ inputs.org-name }}-${{ inputs.project-name }}
+#   INGRESS_HOST: ${{ inputs.ingress-subdomain != '' && format('{0}.texcorver.com', inputs.ingress-subdomain) || 'texcorver.com' }}
 
-jobs:
-  run-test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+# jobs:
+#   run-test:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
       
-      - name: Run tests
-        run: |
-          echo "Running tests..."
-          # Add your test commands here
-          echo "Tests completed successfully"
+#       - name: Run tests
+#         run: |
+#           echo "Running tests..."
+#           # Add your test commands here
+#           echo "Tests completed successfully"
 
-  build-image:
-    runs-on: arc-runner-set
-    needs: run-test
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+#   build-image:
+#     runs-on: arc-runner-set
+#     needs: run-test
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
       
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        with:
-          buildkitd-config-inline: |
-            [registry."${{ env.REGISTRY }}"]
-              insecure = true
-              http = true
+#       - name: Set up Docker Buildx
+#         uses: docker/setup-buildx-action@v3
+#         with:
+#           buildkitd-config-inline: |
+#             [registry."${{ env.REGISTRY }}"]
+#               insecure = true
+#               http = true
       
-      - name: Log in to Docker Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ env.DOCKER_USERNAME }}
-          password: ${{ env.DOCKER_PASSWORD }}
+#       - name: Log in to Docker Registry
+#         uses: docker/login-action@v3
+#         with:
+#           registry: ${{ env.REGISTRY }}
+#           username: ${{ env.DOCKER_USERNAME }}
+#           password: ${{ env.DOCKER_PASSWORD }}
       
-      - name: Build and push Docker image
-        id: build
-        uses: docker/build-push-action@v5
-        with:
-          context: ${{ inputs.docker-build-context }}
-          file: ${{ inputs.docker-build-file }}
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ env.REGISTRY }}/docker/${{ env.IMAGE_NAME }}:${{ inputs.tag }}
-          ssh: default=/home/runner/.ssh/id_ed25519
+#       - name: Build and push Docker image
+#         id: build
+#         uses: docker/build-push-action@v5
+#         with:
+#           context: ${{ inputs.docker-build-context }}
+#           file: ${{ inputs.docker-build-file }}
+#           platforms: linux/amd64,linux/arm64
+#           push: true
+#           tags: ${{ env.REGISTRY }}/docker/${{ env.IMAGE_NAME }}:${{ inputs.tag }}
+#           ssh: default=/home/runner/.ssh/id_ed25519
 
-  deploy-on-dev:
-    runs-on: arc-runner-set
-    needs: build-image
-    # env:
-    #   INGRESS_HOST: ${{ inputs.ingress-subdomain != '' && format('{0}.texcorver.com', inputs.ingress-subdomain) || 'texcorver.com' }}
-    steps:
-      - name: Set up kubectl
-        uses: azure/setup-kubectl@v4
-        id: install
-      - name: Verify namespace
-        run: |
-          kubectl apply -f - <<EOF
-          apiVersion: v1
-          kind: Namespace
-          metadata:
-            name: ${{ inputs.org-name }}
-          EOF
-          echo "Namespace ${{ inputs.org-name }} is ready"
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Update secret config
-        run: |
-          kubectl create secret generic ${{ inputs.project-name }}-config \
-            --from-file '${{ inputs.config-path }}' \
-            -n ${{ inputs.org-name }} --dry-run=client -o yaml | kubectl apply -f -
+#   deploy-on-dev:
+#     runs-on: arc-runner-set
+#     needs: build-image
+#     # env:
+#     #   INGRESS_HOST: ${{ inputs.ingress-subdomain != '' && format('{0}.texcorver.com', inputs.ingress-subdomain) || 'texcorver.com' }}
+#     steps:
+#       - name: Set up kubectl
+#         uses: azure/setup-kubectl@v4
+#         id: install
+#       - name: Verify namespace
+#         run: |
+#           kubectl apply -f - <<EOF
+#           apiVersion: v1
+#           kind: Namespace
+#           metadata:
+#             name: ${{ inputs.org-name }}
+#           EOF
+#           echo "Namespace ${{ inputs.org-name }} is ready"
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+#       - name: Update secret config
+#         run: |
+#           kubectl create secret generic ${{ inputs.project-name }}-config \
+#             --from-file '${{ inputs.config-path }}' \
+#             -n ${{ inputs.org-name }} --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Deploy to development
-        run: |
-          kubectl apply -f - <<'EOF'
-          apiVersion: argoproj.io/v1alpha1
-          kind: Application
-          metadata:
-            name: ${{ env.IMAGE_NAME }}
-            namespace: argocd
-            finalizers:
-              - resources-finalizer.argocd.argoproj.io
-            labels:
-              name: ${{ env.IMAGE_NAME }}
-          spec:
-            project: default
-            sources:
-              - repoURL: https://github.com/tex-corver/generic.git
-                targetRevision: HEAD
-                path: .
-                helm:
-                  releaseName: ${{ env.IMAGE_NAME }}
-                  valuesObject:
-                    nameOverride: ${{ inputs.project-name }}
-                    configPath: /etc/config
-                    configSecret: ${{ inputs.project-name }}-config
-                    image:
-                      imageOverride: jcr.texcorver.com/docker/${{ env.IMAGE_NAME }}:${{ inputs.tag }}
-                      pullPolicy: Always
-                    service:
-                      port: ${{ inputs.port }}
-                    imagePullSecrets:
-                      - name: jcr-image-pull-secret
-                    ingress:
-                      enabled: ${{ inputs.ingress }}
-                      className: nginx
-                      annotations:
-                        cert-manager.io/cluster-issuer: letsencrypt-prod
-                        ${{ inputs.root-path != '' && 'nginx.ingress.kubernetes.io/rewrite-target: /$2' || null }}
-                      hosts:
-                        - host: ${{ env.INGRESS_HOST }}
-                          paths:
-                            - path: ${{ inputs.root-path != '' && format('{0}(/|$)(.*)', inputs.root-path) || '/' }}
-                              pathType: ${{ inputs.root-path != '' && 'ImplementationSpecific' || 'Prefix' }}
-                      tls:
-                        - secretName: ${{ env.INGRESS_HOST }}-tls
-                          hosts:
-                            - ${{ env.INGRESS_HOST }}
-            destination:
-              name: in-cluster
-              namespace: ${{ inputs.org-name }}
-            syncPolicy:
-              automated:
-                prune: true
-                selfHeal: true
-                allowEmpty: false
-              syncOptions:
-                - CreateNamespace=true
-                - PrunePropagationPolicy=foreground
-                - PruneLast=true
-                - ApplyOutOfSyncOnly=true
-              retry:
-                limit: 5
-                backoff:
-                  duration: 5s
-                  factor: 2
-                  maxDuration: 3m
-            revisionHistoryLimit: 3
-          EOF
-          echo "Deployment to development completed"
+#       - name: Deploy to development
+#         run: |
+#           kubectl apply -f - <<'EOF'
+#           apiVersion: argoproj.io/v1alpha1
+#           kind: Application
+#           metadata:
+#             name: ${{ env.IMAGE_NAME }}
+#             namespace: argocd
+#             finalizers:
+#               - resources-finalizer.argocd.argoproj.io
+#             labels:
+#               name: ${{ env.IMAGE_NAME }}
+#           spec:
+#             project: default
+#             sources:
+#               - repoURL: https://github.com/tex-corver/generic.git
+#                 targetRevision: HEAD
+#                 path: .
+#                 helm:
+#                   releaseName: ${{ env.IMAGE_NAME }}
+#                   valuesObject:
+#                     nameOverride: ${{ inputs.project-name }}
+#                     configPath: /etc/config
+#                     configSecret: ${{ inputs.project-name }}-config
+#                     image:
+#                       imageOverride: jcr.texcorver.com/docker/${{ env.IMAGE_NAME }}:${{ inputs.tag }}
+#                       pullPolicy: Always
+#                     service:
+#                       port: ${{ inputs.port }}
+#                     imagePullSecrets:
+#                       - name: jcr-image-pull-secret
+#                     ingress:
+#                       enabled: ${{ inputs.ingress }}
+#                       className: nginx
+#                       annotations:
+#                         cert-manager.io/cluster-issuer: letsencrypt-prod
+#                         ${{ inputs.root-path != '' && 'nginx.ingress.kubernetes.io/rewrite-target: /$2' || null }}
+#                       hosts:
+#                         - host: ${{ env.INGRESS_HOST }}
+#                           paths:
+#                             - path: ${{ inputs.root-path != '' && format('{0}(/|$)(.*)', inputs.root-path) || '/' }}
+#                               pathType: ${{ inputs.root-path != '' && 'ImplementationSpecific' || 'Prefix' }}
+#                       tls:
+#                         - secretName: ${{ env.INGRESS_HOST }}-tls
+#                           hosts:
+#                             - ${{ env.INGRESS_HOST }}
+#             destination:
+#               name: in-cluster
+#               namespace: ${{ inputs.org-name }}
+#             syncPolicy:
+#               automated:
+#                 prune: true
+#                 selfHeal: true
+#                 allowEmpty: false
+#               syncOptions:
+#                 - CreateNamespace=true
+#                 - PrunePropagationPolicy=foreground
+#                 - PruneLast=true
+#                 - ApplyOutOfSyncOnly=true
+#               retry:
+#                 limit: 5
+#                 backoff:
+#                   duration: 5s
+#                   factor: 2
+#                   maxDuration: 3m
+#             revisionHistoryLimit: 3
+#           EOF
+#           echo "Deployment to development completed"
 
-  verify-deployment:
-    runs-on: arc-runner-set
-    needs: deploy-on-dev
-    outputs:
-      link: ${{ steps.get-output.outputs.link }}
-    steps:
-      - name: Set up kubectl
-        uses: azure/setup-kubectl@v4
-        id: install
+#   verify-deployment:
+#     runs-on: arc-runner-set
+#     needs: deploy-on-dev
+#     outputs:
+#       link: ${{ steps.get-output.outputs.link }}
+#     steps:
+#       - name: Set up kubectl
+#         uses: azure/setup-kubectl@v4
+#         id: install
 
-      - name: Restart deployment
-        run: |
-          kubectl rollout restart deployment/${{ env.IMAGE_NAME }} -n ${{ inputs.org-name }}
-          echo "Deployment restarted successfully"
+#       - name: Restart deployment
+#         run: |
+#           kubectl rollout restart deployment/${{ env.IMAGE_NAME }} -n ${{ inputs.org-name }}
+#           echo "Deployment restarted successfully"
 
-      - name: Wait for deployment readiness
-        timeout-minutes: 5
-        run: |
-          kubectl wait --for=condition=available deployment/${{ env.IMAGE_NAME }} -n ${{ inputs.org-name }}
-          kubectl rollout status deployment/${{ env.IMAGE_NAME }} -n ${{ inputs.org-name }}
-          echo "Deployment verification completed successfully"
-      - name: Verify deployment
-        timeout-minutes: 5
-        run: |
-          echo "Running a simple request to verify the deployment..."
-          while ! curl -s --head ${{ env.IMAGE_NAME }}.${{ inputs.org-name }}.svc:${{ inputs.port }}; do
-            echo "Waiting for deployment to be ready..."
-            sleep 5
-          done
-          echo "Deployment is ready, verifying..."
-      - id: get-output
-        run: |
-          echo "link=https://${{ env.INGRESS_HOST }}${{ inputs.root-path }}" >> "$GITHUB_OUTPUT"
+#       - name: Wait for deployment readiness
+#         timeout-minutes: 5
+#         run: |
+#           kubectl wait --for=condition=available deployment/${{ env.IMAGE_NAME }} -n ${{ inputs.org-name }}
+#           kubectl rollout status deployment/${{ env.IMAGE_NAME }} -n ${{ inputs.org-name }}
+#           echo "Deployment verification completed successfully"
+#       - name: Verify deployment
+#         timeout-minutes: 5
+#         run: |
+#           echo "Running a simple request to verify the deployment..."
+#           while ! curl -s --head ${{ env.IMAGE_NAME }}.${{ inputs.org-name }}.svc:${{ inputs.port }}; do
+#             echo "Waiting for deployment to be ready..."
+#             sleep 5
+#           done
+#           echo "Deployment is ready, verifying..."
+#       - id: get-output
+#         run: |
+#           echo "link=https://${{ env.INGRESS_HOST }}${{ inputs.root-path }}" >> "$GITHUB_OUTPUT"
           
 
-  create-pr-to-master:
-    runs-on: ubuntu-latest
-    needs: [build-image, deploy-on-dev, verify-deployment]
-    if: github.ref != 'refs/heads/master' && github.ref != 'refs/heads/main'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN || github.token }}
+#   create-pr-to-master:
+#     runs-on: ubuntu-latest
+#     needs: [build-image, deploy-on-dev, verify-deployment]
+#     if: github.ref != 'refs/heads/master' && github.ref != 'refs/heads/main'
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+#         with:
+#           token: ${{ secrets.GITHUB_TOKEN || github.token }}
       
-      - name: Create Pull Request
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN || github.token }}
-          script: |
-            const { owner, repo } = context.repo;
-            const head = '${{ github.ref_name }}';
-            const base = 'master';
+#       - name: Create Pull Request
+#         uses: actions/github-script@v7
+#         with:
+#           github-token: ${{ secrets.GITHUB_TOKEN || github.token }}
+#           script: |
+#             const { owner, repo } = context.repo;
+#             const head = '${{ github.ref_name }}';
+#             const base = 'master';
             
-            // Check if PR already exists
-            const existingPRs = await github.rest.pulls.list({
-              owner,
-              repo,
-              head: `${owner}:${head}`,
-              base,
-              state: 'open'
-            });
+#             // Check if PR already exists
+#             const existingPRs = await github.rest.pulls.list({
+#               owner,
+#               repo,
+#               head: `${owner}:${head}`,
+#               base,
+#               state: 'open'
+#             });
             
-            if (existingPRs.data.length > 0) {
-              console.log(`Pull request already exists: ${existingPRs.data[0].html_url}`);
-              const existingPR = existingPRs.data[0];
-              // Create a comment on the existing PR
-              await github.rest.issues.createComment({
-                owner,
-                repo,
-                issue_number: existingPR.number,
-                body: `This pull request has already been created for the latest changes. Please review the existing PR: ${existingPR.html_url}`
-              });
-              return;
-            }
+#             if (existingPRs.data.length > 0) {
+#               console.log(`Pull request already exists: ${existingPRs.data[0].html_url}`);
+#               const existingPR = existingPRs.data[0];
+#               // Create a comment on the existing PR
+#               await github.rest.issues.createComment({
+#                 owner,
+#                 repo,
+#                 issue_number: existingPR.number,
+#                 body: `This pull request has already been created for the latest changes. Please review the existing PR: ${existingPR.html_url}`
+#               });
+#               return;
+#             }
             
-            // Create the pull request
-            const pr = await github.rest.pulls.create({
-              owner,
-              repo,
-              title: 'Deploy ${{ env.IMAGE_NAME }} to production',
-              head,
-              base,
-              body: `## Deployment Summary
+#             // Create the pull request
+#             const pr = await github.rest.pulls.create({
+#               owner,
+#               repo,
+#               title: 'Deploy ${{ env.IMAGE_NAME }} to production',
+#               head,
+#               base,
+#               body: `## Deployment Summary
 
-            - **Branch**: ${{ github.ref_name }}
-            - **Commit**: ${{ github.sha }}
+#             - **Branch**: ${{ github.ref_name }}
+#             - **Commit**: ${{ github.sha }}
             
-            ## Verification
-            - ✅ Tests passed
-            - ✅ Image built and pushed successfully
-            - ✅ Deployed to development environment
-            - ✅ Deployment verification completed
+#             ## Verification
+#             - ✅ Tests passed
+#             - ✅ Image built and pushed successfully
+#             - ✅ Deployed to development environment
+#             - ✅ Deployment verification completed
             
-            Ready for production deployment!`
-            });
+#             Ready for production deployment!`
+#             });
             
-            console.log(`Pull request created: ${pr.data.html_url}`);
+#             console.log(`Pull request created: ${pr.data.html_url}`);
             
-            // Assign reviewer
-            await github.rest.pulls.requestReviewers({
-              owner,
-              repo,
-              pull_number: pr.data.number,
-              reviewers: ['duchuyvp', 'texcorver']
-            });
+#             // Assign reviewer
+#             await github.rest.pulls.requestReviewers({
+#               owner,
+#               repo,
+#               pull_number: pr.data.number,
+#               reviewers: ['duchuyvp', 'texcorver']
+#             });
             
-            console.log('Reviewer assigned successfully');
+#             console.log('Reviewer assigned successfully');
   

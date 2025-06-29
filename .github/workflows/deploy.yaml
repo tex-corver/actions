@@ -1,0 +1,18 @@
+name: Deploy Application
+
+on:
+  push:
+    branches: [dev, feature/*]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    uses: tex-corver/.github/.github/workflows/docker-build-push.yaml@master
+    with:
+      project-name: example-app
+      docker-build-file: src/apps/httpbin/Dockerfile
+      docker-build-context: .
+      port: 80
+      ingress: true
+      ingress-subdomain: example-app
+      config-path: README.md
