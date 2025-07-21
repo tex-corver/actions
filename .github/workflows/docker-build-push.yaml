@@ -133,7 +133,7 @@ env:
   DOCKER_PASSWORD: y9wb3N0Z3
   DOCKER_USERNAME: admin
   IMAGE_NAME: ${{ inputs.org-name }}-${{ inputs.project-name }}
-  INGRESS_HOST: ${{ inputs.ingress-subdomain != '' && format('{0}.texcorver.com', inputs.ingress-subdomain) || 'texcorver.com' }}
+  INGRESS_HOST: ${{ inputs.ingress-subdomain != '' && format('{0}.urieljsc.com', inputs.ingress-subdomain) || 'urieljsc.com' }}
 
 jobs:
   run-test:
